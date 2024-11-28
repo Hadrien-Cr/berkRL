@@ -47,10 +47,12 @@ class DQNAgent(nn.Module):
         observation = ptu.from_numpy(np.asarray(observation))[None]
 
         # TODO(student): get the action from the critic using an epsilon-greedy strategy
-        raise NotImplementedError
-        action = ...
+        if np.random.rand() < epsilon:
+            action = np.random.randint(self.num_actions)
+        else:
+            action = np.argmax(self.critic(observation).detach().cpu().numpy())
 
-        return ptu.to_numpy(action).squeeze(0).item()
+        return action.squeeze(0).item()
 
     def compute_critic_loss(
         self,

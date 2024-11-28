@@ -1,6 +1,6 @@
 from typing import Optional, Tuple
 
-import gym
+import gymnasium as gym
 from gym.wrappers.record_episode_statistics import RecordEpisodeStatistics
 
 import numpy as np

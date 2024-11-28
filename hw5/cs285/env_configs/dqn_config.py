@@ -1,7 +1,8 @@
 from typing import Optional, Tuple
 
-import gym
-from gym.wrappers.record_episode_statistics import RecordEpisodeStatistics
+import gymnasium as gym
+from gymnasium.wrappers import RecordEpisodeStatistics
+from gymnasium.wrappers import TimeLimit
 
 import numpy as np
 import torch
@@ -45,7 +46,7 @@ def basic_dqn_config(
     )
 
     def make_env():
-        return RecordEpisodeStatistics(gym.make(env_name), 100)
+        return RecordEpisodeStatistics(TimeLimit(gym.make(env_name), 100))
 
     log_string = "{}_{}_s{}_l{}_d{}".format(
         exp_name or "dqn",

@@ -1,5 +1,5 @@
 import numpy as np
-import gym
+import gymnasium as gym
 import pickle
 
 WALLS = {
@@ -338,7 +338,7 @@ class Pointmass(gym.Env):
     def seed(self, seed):
         np.random.seed(seed)
 
-    def reset(self, seed=None):
+    def reset(self, seed=None, **kwargs):
         if seed:
             self.seed(seed)
 
@@ -423,7 +423,7 @@ class Pointmass(gym.Env):
         else:
             reward = int(dist < self.epsilon) - 1
 
-        return ns, reward, done, {}
+        return ns, reward, done, False, {}
 
     @property
     def walls(self):

@@ -1,6 +1,6 @@
-import gym
-from gym.wrappers.record_episode_statistics import RecordEpisodeStatistics
-from gym.wrappers.time_limit import TimeLimit
+import gymnasium as gym
+from gymnasium.wrappers import RecordEpisodeStatistics
+from gymnasium.wrappers import TimeLimit
 
 from typing import Optional
 

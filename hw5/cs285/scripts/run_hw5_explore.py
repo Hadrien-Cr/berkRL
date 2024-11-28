@@ -8,7 +8,7 @@ from cs285.envs import Pointmass
 import os
 import time
 
-import gym
+import gymnasium as gym
 import numpy as np
 import torch
 from cs285.infrastructure import pytorch_util as ptu
@@ -18,7 +18,7 @@ from cs285.infrastructure import utils
 from cs285.infrastructure.logger import Logger
 from cs285.infrastructure.replay_buffer import ReplayBuffer
 
-from scripting_utils import make_logger, make_config
+from cs285.scripts.scripting_utils import make_logger, make_config
 
 MAX_NVIDEO = 2
 
@@ -59,9 +59,7 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
     # make the gym environment
     env = config["make_env"]()
     exploration_schedule = config.get("exploration_schedule", None)
-    discrete = isinstance(env.action_space, gym.spaces.Discrete)
 
-    assert discrete, "DQN only supports discrete action spaces"
 
     agent_cls = agent_types[config["agent"]]
     agent = agent_cls(
@@ -89,9 +87,9 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
             epsilon = None
             action = agent.get_action(observation)
 
-        next_observation, reward, done, info = env.step(action)
+        next_observation, reward, done, truncated, info  = env.step(action)
         next_observation = np.asarray(next_observation)
-
+        observation = np.asarray(observation)
         truncated = info.get("TimeLimit.truncated", False)
 
         replay_buffer.insert(
@@ -179,7 +177,7 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
     # Render final heatmap
     fig = visualize(env_pointmass, agent, replay_buffer.observations[:config["total_steps"]])
     fig.suptitle("State coverage")
-    filename = os.path.join("exploration_visualization", f"{config['log_name']}.png")
+    filename = os.path.join("viz", f"{config['log_name']}.png")
     fig.savefig(filename)
     print("Saved final heatmap to", filename)
 
