@@ -52,16 +52,18 @@ class MLPPolicy(nn.Module):
             parameters,
             learning_rate,
         )
-
+        self.ac_dim = ac_dim
         self.discrete = discrete
 
     @torch.no_grad()
     def get_action(self, obs: np.ndarray) -> np.ndarray:
         """Takes a single observation (as a numpy array) and returns a single action (as a numpy array)."""
         # TODO: implement get_action
-        action = self.forward(ptu.from_numpy(obs)).sample().cpu().numpy()
-
-        return action
+        obs = ptu.from_numpy(np.array([obs]))
+        assert obs.shape[0] == 1
+        action = self.forward(obs).sample().cpu().numpy()
+        assert action.shape == (1,) if self.ac_dim == 1 else (1, self.ac_dim), f"action shape {action.shape}"
+        return action[0]
 
     def forward(self, obs: torch.FloatTensor):
         """
@@ -76,15 +78,16 @@ class MLPPolicy(nn.Module):
             return distributions.Categorical(probs = probs)
         else:
             # TODO: define the forward pass for a policy with a continuous action space.
-            mu = self.mean_net(obs)
+            x = self.mean_net(obs)
+            x = torch.tanh(x)
             std = self.logstd.exp()
-            return distributions.Normal(loc = mu, scale= std)
+            m = torch.distributions.Normal(x, self.logstd.exp())
+            return m
 
     def get_log_prob(self, obs, actions_taken):
-        if self.discrete:
-            return self.forward(obs).log_prob(actions_taken)
-        else:
-            return self.forward(obs).log_prob(actions_taken).sum(-1)
+        log_prob = self.forward(obs).log_prob(actions_taken)
+        assert log_prob.shape == actions_taken.shape
+        return self.forward(obs).log_prob(actions_taken)
 
 
     def update(self, obs: np.ndarray, actions: np.ndarray, *args, **kwargs) -> dict:
@@ -116,13 +119,13 @@ class MLPPolicyPG(MLPPolicy):
         advantages = ptu.from_numpy(advantages)
 
         # TODO: implement the policy gradient actor update.
-        # print(actions.shape, self.mean_net(obs).shape, self.logstd.shape, dist.log_prob(actions))
-        # print(dist.log_prob(actions), advantages)
-        # raise ValueError
-        
-        logprob = self.get_log_prob(obs, actions)
-        print(actions.shape, logprob.shape, advantages.shape)
-        loss = torch.sum(- logprob * advantages)
+        policy_loss = []
+        for i in range(obs.shape[0]):
+            ob = ptu.from_numpy(np.array([obs[i]]))
+            ac = ptu.from_numpy(np.array([actions[i]]))
+            log_prob = self.get_log_prob(ob, ac)
+            policy_loss.append(-log_prob * advantages[i])
+        loss = torch.cat(policy_loss).mean()
         loss.backward()
         self.optimizer.step()
 

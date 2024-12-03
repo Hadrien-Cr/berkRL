@@ -74,9 +74,16 @@ class PGAgent(nn.Module):
         terminals = np.concatenate(terminals)
         # step 2: calculate advantages from Q values
         advantages: np.ndarray = self._estimate_advantage(
-            obs, rewards, q_values, terminals
+            obs = obs, 
+            rewards = rewards, 
+            q_values = q_values, 
+            terminals = terminals
         )
-
+        # print("advantages", advantages[0:5])
+        # print("rewards", rewards[0:5])
+        # print("mean of q values", np.mean(q_values))
+        # print("mean of rewards", np.mean(rewards))
+        # print("mean of advantages", np.mean(advantages))
         # step 3: use all datapoints (s_t, a_t, adv_t) to update the PG actor/policy
         # TODO: update the PG actor/policy network once using the advantages
         info: dict = self.actor.update(obs, actions, advantages)
@@ -123,8 +130,7 @@ class PGAgent(nn.Module):
             advantages = q_values.copy()
         else:
             # TODO: run the critic and use it as a baseline
-            values_not_norm = self.critic(ptu.from_numpy(obs)).squeeze()
-            values = values_not_norm * np.std(q_values) + np.mean(q_values)
+            values = self.critic(ptu.from_numpy(obs)).squeeze()
             values = ptu.to_numpy(values)
             assert values.shape == q_values.shape, f"Critic output shape {values.shape} does not match Q-value shape {q_values.shape}"
 
@@ -143,7 +149,7 @@ class PGAgent(nn.Module):
                     # TODO: recursively compute advantage estimates starting from timestep T.
                     # HINT: use terminals to handle edge cases. terminals[i] is 1 if the state is the last in its
                     # trajectory, and 0 otherwise.
-                    advantages[i] = q_values[i] - values[i] + (self.gamma * advantages[i+1] if not terminals[i] else 0)
+                    advantages[i] = (q_values[i] - values[i]) + (self.gamma * self.gae_lambda * advantages[i+1] if not terminals[i] else 0)
 
                 # remove dummy advantage
                 advantages = advantages[:-1]
@@ -173,6 +179,5 @@ class PGAgent(nn.Module):
         """
         sums =  [0] * len(rewards)
         for start in range(len(rewards)):
-            indices = np.arange(len(rewards)-start)
-            sums[start] = np.sum([self.gamma ** t * rewards[t + start] for t in indices])
+            sums[start] = np.sum([(self.gamma ** (t - start)) * rewards[t] for t in range(start, len(rewards))])
         return np.array(sums)

@@ -20,20 +20,6 @@ def sample_trajectory(
     steps = 0
 
     while True:
-        # render an image
-        if render:
-            if hasattr(env, "sim"):
-                img = env.sim.render(camera_name="track", height=500, width=500)[::-1]
-            else:
-                img = env.render(mode="rgb_array")
-            
-            if isinstance(img, list):
-                img = img[0]
-
-            image_obs.append(
-                cv2.resize(img, dsize=(250, 250), interpolation=cv2.INTER_CUBIC)
-            )
-
         # TODO use the most recent ob to decide what to do
         ac = policy.get_action(ob)
 
@@ -74,36 +60,6 @@ def sample_trajectory(
     }
 
 
-def sample_trajectories(
-    env: gym.Env,
-    policy: MLPPolicy,
-    min_timesteps_per_batch: int,
-    max_length: int,
-    render: bool = False,
-) -> Tuple[List[Dict[str, np.ndarray]], int]:
-    """Collect rollouts using policy until we have collected min_timesteps_per_batch steps."""
-    timesteps_this_batch = 0
-    trajs = []
-    while timesteps_this_batch < min_timesteps_per_batch:
-        # collect rollout
-        traj = sample_trajectory(env, policy, max_length, render)
-        trajs.append(traj)
-
-        # count steps
-        timesteps_this_batch += get_traj_length(traj)
-    return trajs, timesteps_this_batch
-
-
-def sample_n_trajectories(
-    env: gym.Env, policy: MLPPolicy, ntraj: int, max_length: int, render: bool = False
-):
-    """Collect ntraj rollouts."""
-    trajs = []
-    for _ in range(ntraj):
-        # collect rollout
-        traj = sample_trajectory(env, policy, max_length, render)
-        trajs.append(traj)
-    return trajs
 
 
 def compute_metrics(trajs, eval_trajs):
@@ -133,27 +89,3 @@ def compute_metrics(trajs, eval_trajs):
 
     return logs
 
-
-def convert_listofrollouts(trajs):
-    """
-    Take a list of rollout dictionaries and return separate arrays, where each array is a concatenation of that array
-    from across the rollouts.
-    """
-    observations = np.concatenate([traj["observation"] for traj in trajs])
-    actions = np.concatenate([traj["action"] for traj in trajs])
-    next_observations = np.concatenate([traj["next_observation"] for traj in trajs])
-    terminals = np.concatenate([traj["terminal"] for traj in trajs])
-    concatenated_rewards = np.concatenate([traj["reward"] for traj in trajs])
-    unconcatenated_rewards = [traj["reward"] for traj in trajs]
-    return (
-        observations,
-        actions,
-        next_observations,
-        terminals,
-        concatenated_rewards,
-        unconcatenated_rewards,
-    )
-
-
-def get_traj_length(traj):
-    return len(traj["reward"])
